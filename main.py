@@ -23,7 +23,7 @@ def main(config: DictConfig):
     # Basic cleaning step
     if "basic_cleaning" in selected_steps:
         _ = mlflow.run(
-            uri="src/basic_cleaning",
+            uri="file://./src/basic_cleaning",  # Explicitly specify the local directory
             entry_point="main",
             parameters={
                 "input_artifact": config["basic_cleaning"]["input_artifact"],
@@ -34,6 +34,23 @@ def main(config: DictConfig):
                 "max_price": config["basic_cleaning"]["max_price"],
             },
         )
+
+    if "data_check" in selected_steps:
+        _ = mlflow.run(
+            uri="file://./src/data_check",  # Explicitly specify the local directory
+            entry_point="main",
+            parameters={
+                "csv": "clean_sample.csv:latest",
+                "ref": "clean_sample.csv:reference",
+                "kl_threshold": config["data_check"]["kl_threshold"],
+                "min_price": config["data_check"]["min_price"],
+                "max_price": config["data_check"]["max_price"],
+            },
+        )
+
+
+
+
 
 
 if __name__ == "__main__":

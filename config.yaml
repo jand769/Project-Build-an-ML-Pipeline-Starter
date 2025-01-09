@@ -1,5 +1,5 @@
 main:
-  steps: "download,basic_cleaning"
+  steps: "download,basic_cleaning,data_check"
 
 etl:
   sample_artifact: "sample.csv"
@@ -12,5 +12,10 @@ basic_cleaning:
   output_artifact: "clean_sample.csv"
   output_type: "clean_sample"
   output_description: "Cleaned Airbnb data"
+  min_price: 10
+  max_price: 350
+
+data_check:
+  kl_threshold: 0.1
   min_price: 10
   max_price: 350
