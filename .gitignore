@@ -147,3 +147,5 @@ random_forest_dir/
 multirun/
 Miniconda3-latest-Linux-x86_64.sh
 Miniconda3-latest-Linux-x86_64.sh
+src/basic_cleaning/clean_sample.csv
+src/basic_cleaning/cleaned_data.csv
