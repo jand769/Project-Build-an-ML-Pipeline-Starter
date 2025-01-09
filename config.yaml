@@ -1,21 +1,23 @@
 main:
-  steps: "download,basic_cleaning,data_check"
+  steps: "download,basic_cleaning,data_check"  # Steps to execute
 
 etl:
-  sample_artifact: "sample.csv"
-  artifact_name: "raw_data.csv"
-  artifact_type: "raw_data"
-  artifact_description: "Raw data as downloaded"
+  sample_artifact: "raw_data.csv:latest"
+  artifact_name: "sample_data"
+  artifact_type: "dataset"
+  artifact_description: "Raw data sample for analysis"
 
 basic_cleaning:
-  input_artifact: "sample.csv:latest"
-  output_artifact: "clean_sample.csv"
-  output_type: "clean_sample"
-  output_description: "Cleaned Airbnb data"
+  input_artifact: "raw_data.csv:latest"
+  output_artifact: "clean_data.csv"
+  output_type: "dataset"
+  output_description: "Cleaned dataset"
   min_price: 10
-  max_price: 350
+  max_price: 1000
 
 data_check:
+  input_artifact: "clean_data.csv:latest"
+  reference_artifact: "reference_data.csv:latest"
   kl_threshold: 0.1
   min_price: 10
-  max_price: 350
+  max_price: 1000
