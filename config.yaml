@@ -1,23 +1,29 @@
 main:
-  steps: "download,basic_cleaning,data_check"  # Steps to execute
+  components_repository: "https://github.com/udacity/Project-Build-an-ML-Pipeline-Starter.git#components"
+  project_name: nyc_airbnb
+  experiment_name: development
+  steps: all
 
 etl:
-  sample_artifact: "raw_data.csv:latest"
-  artifact_name: "sample_data"
-  artifact_type: "dataset"
-  artifact_description: "Raw data sample for analysis"
-
-basic_cleaning:
-  input_artifact: "raw_data.csv:latest"
-  output_artifact: "clean_data.csv"
-  output_type: "dataset"
-  output_description: "Cleaned dataset"
+  sample: "sample1.csv"
   min_price: 10
-  max_price: 1000
+  max_price: 350
 
 data_check:
-  input_artifact: "clean_data.csv:latest"
-  reference_artifact: "reference_data.csv:latest"
-  kl_threshold: 0.1
-  min_price: 10
-  max_price: 1000
+  kl_threshold: 0.2
+
+modeling:
+  test_size: 0.2
+  val_size: 0.2
+  random_seed: 42
+  stratify_by: "neighbourhood_group"
+  max_tfidf_features: 5
+  random_forest:
+    n_estimators: 200
+    max_depth: 50
+    min_samples_split: 4
+    min_samples_leaf: 3
+    n_jobs: -1
+    criterion: squared_error
+    max_features: 0.5
+    oob_score: true

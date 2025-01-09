@@ -1,37 +1,12 @@
 name: nyc_airbnb
+
 conda_env: conda.yml
 
 entry_points:
   main:
     parameters:
       steps:
-        description: Comma-separated list of steps to execute (useful for debugging)
+        description: Comma-separated list of steps to execute
         type: str
         default: all
-      hydra_options:
-        description: Other configuration parameters to override
-        type: str
-        default: ''
-    command: "python main.py main.steps=\\'{steps}\\' $(echo {hydra_options})"
-
-  data_check:
-    parameters:
-      csv:
-        description: Input CSV file to be tested
-        type: str
-      ref:
-        description: Reference CSV file to compare the new csv to
-        type: str
-      kl_threshold:
-        description: Threshold for the KL divergence test
-        type: float
-        default: 0.1
-      min_price:
-        description: Minimum accepted price
-        type: float
-        default: 10
-      max_price:
-        description: Maximum accepted price
-        type: float
-        default: 1000
-    command: "pytest src/data_check -vv --csv {csv} --ref {ref} --kl_threshold {kl_threshold} --min_price {min_price} --max_price {max_price}"
+    command: "python main.py main.steps={steps}"
