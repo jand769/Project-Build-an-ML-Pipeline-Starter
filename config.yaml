@@ -11,6 +11,7 @@ etl:
 
 data_check:
   kl_threshold: 0.2
+  ref: "clean_sample1.csv"
 
 modeling:
   test_size: 0.2
