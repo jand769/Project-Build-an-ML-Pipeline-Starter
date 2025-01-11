@@ -2,6 +2,7 @@ import pytest
 import pandas as pd
 import wandb
 
+
 def pytest_addoption(parser):
     parser.addoption("--csv", action="store")
     parser.addoption("--ref", action="store")
@@ -9,30 +10,68 @@ def pytest_addoption(parser):
     parser.addoption("--min_price", action="store")
     parser.addoption("--max_price", action="store")
 
-@pytest.fixture(scope='session')
+
+@pytest.fixture(scope="session")
 def data(request):
     run = wandb.init(job_type="data_tests", resume=True)
-    data_path = run.use_artifact(request.config.option.csv).file()
-    if data_path is None:
-        pytest.fail("You must provide the --csv option on the command line")
-    return pd.read_csv(data_path)
 
-@pytest.fixture(scope='session')
+    artifact_name = request.config.option.csv
+    print(f"Fetching data artifact: {artifact_name}")
+
+    try:
+        data_path = run.use_artifact(artifact_name).file()
+        print(f"Fetched data artifact: {data_path}")
+    except Exception as e:
+        print(f"Error fetching data artifact: {e}")
+        raise e
+
+    df = pd.read_csv(data_path)
+    return df
+
+
+@pytest.fixture(scope="session")
 def ref_data(request):
     run = wandb.init(job_type="data_tests", resume=True)
-    data_path = run.use_artifact(request.config.option.ref).file()
-    if data_path is None:
-        pytest.fail("You must provide the --ref option on the command line")
-    return pd.read_csv(data_path)
 
-@pytest.fixture(scope='session')
+    artifact_name = request.config.option.ref
+    print(f"Fetching reference artifact: {artifact_name}")
+
+    try:
+        data_path = run.use_artifact(artifact_name).file()
+        print(f"Fetched reference artifact: {data_path}")
+    except Exception as e:
+        print(f"Error fetching reference artifact: {e}")
+        raise e
+
+    df = pd.read_csv(data_path)
+    return df
+
+
+@pytest.fixture(scope="session")
 def kl_threshold(request):
-    return float(request.config.option.kl_threshold)
+    kl_threshold = request.config.option.kl_threshold
 
-@pytest.fixture(scope='session')
+    if kl_threshold is None:
+        pytest.fail("You must provide a threshold for the KL test")
+
+    return float(kl_threshold)
+
+
+@pytest.fixture(scope="session")
 def min_price(request):
-    return float(request.config.option.min_price)
+    min_price = request.config.option.min_price
 
-@pytest.fixture(scope='session')
+    if min_price is None:
+        pytest.fail("You must provide min_price")
+
+    return float(min_price)
+
+
+@pytest.fixture(scope="session")
 def max_price(request):
-    return float(request.config.option.max_price)
+    max_price = request.config.option.max_price
+
+    if max_price is None:
+        pytest.fail("You must provide max_price")
+
+    return float(max_price)
