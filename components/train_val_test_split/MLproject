@@ -5,21 +5,17 @@ entry_points:
   main:
     parameters:
       input:
-        description: Artifact to split (a CSV file)
+        description: Input artifact
         type: string
-
       test_size:
-        description: Size of the test split. Fraction of the dataset, or number of items
-        type: string
-
+        description: Fraction of data for the test set
+        type: float
       random_seed:
-        description: Seed for the random number generator. Use this for reproducibility
-        type: string
+        description: Seed for reproducibility
+        type: int
         default: 42
-
       stratify_by:
-        description: Column to use for stratification (if any)
+        description: Column to use for stratification
         type: string
-        default: 'none'
-
+        default: "none"
     command: "python run.py {input} {test_size} --random_seed {random_seed} --stratify_by {stratify_by}"
