@@ -4,7 +4,6 @@ conda_env: conda.yml
 entry_points:
   main:
     parameters:
-
       input:
         description: Artifact to split (a CSV file)
         type: string
