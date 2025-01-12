@@ -1,0 +1,2 @@
+CMDLINE python run.py --mlflow_model random_forest_export:prod --test_dataset test_data.csv
+MEM 3.281250 1736721702.7742

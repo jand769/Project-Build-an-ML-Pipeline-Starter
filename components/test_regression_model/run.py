@@ -1,73 +1,38 @@
-#!/usr/bin/env python
-"""
-This step takes the best model, tagged with the "prod" tag, and tests it against the test dataset
-"""
-import argparse
-import logging
-import wandb
 import mlflow
 import pandas as pd
-from sklearn.metrics import mean_absolute_error
+from mlflow.pyfunc import load_model
+from sklearn.metrics import mean_absolute_error, r2_score
 
-from wandb_utils.log_artifact import log_artifact
-
-
-logging.basicConfig(level=logging.INFO, format="%(asctime)-15s %(message)s")
-logger = logging.getLogger()
-
-
-def go(args):
-
-    run = wandb.init(job_type="test_model")
-    run.config.update(args)
-
-    logger.info("Downloading artifacts")
-    # Download input artifact. This will also log that this script is using this
-    # particular version of the artifact
-    model_local_path = run.use_artifact(args.mlflow_model).download()
-
+def go(mlflow_model: str, test_dataset: str):
     # Download test dataset
-    test_dataset_path = run.use_artifact(args.test_dataset).file()
+    print(f"Fetching test dataset: {test_dataset}")
+    test_data_path = mlflow.artifacts.download_artifacts(test_dataset)
+    print(f"Downloaded test data to: {test_data_path}")
 
-    # Read test dataset
-    X_test = pd.read_csv(test_dataset_path)
-    y_test = X_test.pop("price")
+    # Load test data
+    test_df = pd.read_csv(test_data_path)
+    X_test = test_df.drop(columns=["price"])
+    y_test = test_df["price"]
 
-    logger.info("Loading model and performing inference on test set")
-    sk_pipe = mlflow.sklearn.load_model(model_local_path)
-    y_pred = sk_pipe.predict(X_test)
+    # Load production model
+    print(f"Fetching model: {mlflow_model}")
+    model_path = mlflow.artifacts.download_artifacts(mlflow_model)
+    model = load_model(model_path)
 
-    logger.info("Scoring")
-    r_squared = sk_pipe.score(X_test, y_test)
+    # Perform inference
+    print("Performing inference...")
+    y_pred = model.predict(X_test)
 
+    # Calculate metrics
     mae = mean_absolute_error(y_test, y_pred)
+    r2 = r2_score(y_test, y_pred)
 
-    logger.info(f"Score: {r_squared}")
-    logger.info(f"MAE: {mae}")
-
-    # Log MAE and r2
-    run.summary['r2'] = r_squared
-    run.summary['mae'] = mae
-
+    print(f"MAE: {mae}, R2: {r2}")
 
 if __name__ == "__main__":
-
-    parser = argparse.ArgumentParser(description="Test the provided model against the test dataset")
-
-    parser.add_argument(
-        "--mlflow_model",
-        type=str, 
-        help="Input MLFlow model",
-        required=True
-    )
-
-    parser.add_argument(
-        "--test_dataset",
-        type=str, 
-        help="Test dataset",
-        required=True
-    )
-
+    import argparse
+    parser = argparse.ArgumentParser(description="Test regression model")
+    parser.add_argument("--mlflow_model", required=True, type=str)
+    parser.add_argument("--test_dataset", required=True, type=str)
     args = parser.parse_args()
-
-    go(args)
+    go(args.mlflow_model, args.test_dataset)
