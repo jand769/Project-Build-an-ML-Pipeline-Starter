@@ -3,7 +3,6 @@ import wandb
 # Initialize the API
 api = wandb.Api()
 
-# Define your project and entity
 project_name = "nyc_airbnb"
 entity_name = "jand769-western-governors-university"
 
@@ -23,7 +22,6 @@ try:
                 print("    (Cannot generate link for this artifact type)")
                 continue
             try:
-                # Generate link if allowed
                 print(f"    Artifact Path: {artifact.metadata.get('path', 'N/A')}")
             except Exception as e:
                 print(f"    Could not retrieve artifact details: {e}")

@@ -2,7 +2,7 @@ import mlflow
 import hydra
 from omegaconf import DictConfig
 
-@hydra.main(config_path=".", config_name="config")  # Adjust config path if needed
+@hydra.main(config_path=".", config_name="config")
 def go(config: DictConfig):
     steps_to_run = config.get("steps", "").split(",")
 
@@ -71,7 +71,6 @@ def go(config: DictConfig):
             },
         )
 
-    # Add the test_regression_model step
     if "test_regression_model" in steps_to_run:
         _ = mlflow.run(
             uri="components/test_regression_model",

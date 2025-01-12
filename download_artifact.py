@@ -3,7 +3,6 @@ import wandb
 # Initialize the API
 api = wandb.Api()
 
-# Define your project and entity
 project_name = "nyc_airbnb"
 entity_name = "jand769-western-governors-university"
 artifact_name = "clean_sample1.csv"  # Replace with the artifact name you're interested in
