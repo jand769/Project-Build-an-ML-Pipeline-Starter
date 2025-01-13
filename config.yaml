@@ -4,6 +4,7 @@ main:
   components_repository: "https://github.com/jand769/Project-Build-an-ML-Pipeline-Starter.git"
   steps: "all"
 
+
 etl:
   sample: "sample2.csv"
   min_price: 10
