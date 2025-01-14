@@ -1,6 +1,8 @@
+import os
 import mlflow
 import hydra
 from omegaconf import DictConfig
+import hydra.utils
 
 @hydra.main(config_name="config")
 def go(config: DictConfig):
@@ -29,7 +31,7 @@ def go(config: DictConfig):
 
     if "basic_cleaning" in steps_to_execute:
         _ = mlflow.run(
-            uri=config.main.components_repository + "/basic_cleaning",
+            uri=os.path.join(hydra.utils.get_original_cwd(), "src", "basic_cleaning"),
             parameters={
                 "input_artifact": config.basic_cleaning.input_artifact,
                 "output_artifact": config.basic_cleaning.output_artifact,
@@ -40,13 +42,13 @@ def go(config: DictConfig):
 
     if "data_check" in steps_to_execute:
         _ = mlflow.run(
-            uri=config.main.components_repository + "/data_check",
+            uri=os.path.join(hydra.utils.get_original_cwd(), "src", "data_check"),
             parameters={"kl_threshold": config.data_check.kl_threshold},
         )
 
     if "data_split" in steps_to_execute:
         _ = mlflow.run(
-            uri=config.main.components_repository + "/data_split",
+            uri=os.path.join(hydra.utils.get_original_cwd(), "src", "data_split"),
             parameters={
                 "test_size": config.modeling.test_size,
                 "random_seed": config.modeling.random_seed,
@@ -56,7 +58,7 @@ def go(config: DictConfig):
 
     if "train_random_forest" in steps_to_execute:
         _ = mlflow.run(
-            uri=config.main.components_repository + "/train_random_forest",
+            uri=os.path.join(hydra.utils.get_original_cwd(), "src", "train_random_forest"),
             parameters={
                 "max_tfidf_features": config.modeling.max_tfidf_features,
                 "random_forest": config.modeling.random_forest,
@@ -65,7 +67,7 @@ def go(config: DictConfig):
 
     if "test_model" in steps_to_execute:
         _ = mlflow.run(
-            uri=config.main.components_repository + "/test_model",
+            uri=os.path.join(hydra.utils.get_original_cwd(), "src", "test_model"),
             parameters={},
         )
 
