@@ -8,20 +8,22 @@ def go(args):
 
     # Download the input artifact
     artifact_local_path = wandb.use_artifact(args.input_artifact).file()
-    print(f"Input artifact path: {artifact_local_path}")
 
     # Read the dataset
     df = pd.read_csv(artifact_local_path)
-    print(f"Dataset shape before cleaning: {df.shape}")
 
-    
+    # Log the dataset shape before filtering
+    print(f"Dataset shape before filtering: {df.shape}")
+
+    # Filter the dataset by geolocation
     idx = df['longitude'].between(-74.25, -73.50) & df['latitude'].between(40.5, 41.2)
     df = df[idx].copy()
-    print(f"Dataset shape after geolocation filtering: {df.shape}")
+
+    # Log the dataset shape after filtering
+    print(f"Dataset shape after filtering: {df.shape}")
 
     # Save the cleaned dataset
     df.to_csv(args.output_artifact, index=False)
-    print(f"Cleaned dataset saved to: {args.output_artifact}")
 
     # Log the cleaned dataset as an artifact
     artifact = wandb.Artifact(
@@ -31,7 +33,6 @@ def go(args):
     )
     artifact.add_file(args.output_artifact)
     run.log_artifact(artifact)
-    print(f"Cleaned dataset logged as an artifact: {args.output_artifact}")
 
     run.finish()
 

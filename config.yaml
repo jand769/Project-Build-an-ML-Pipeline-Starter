@@ -4,7 +4,6 @@ main:
   components_repository: "https://github.com/jand769/Project-Build-an-ML-Pipeline-Starter.git"
   steps: "all"
 
-
 etl:
   sample: "sample2.csv"
   min_price: 10
@@ -17,7 +16,6 @@ basic_cleaning:
   output_description: "Cleaned dataset for sample2.csv"
 
 data_check:
-  input_artifact: "clean_sample2.csv:latest"
   kl_threshold: 0.1
 
 modeling:
