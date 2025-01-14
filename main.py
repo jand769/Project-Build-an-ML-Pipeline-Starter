@@ -37,6 +37,8 @@ def go(config: DictConfig):
                 "output_artifact": config.basic_cleaning.output_artifact,
                 "output_type": config.basic_cleaning.output_type,
                 "output_description": config.basic_cleaning.output_description,
+                "min_price": config.etl.min_price,
+                "max_price": config.etl.max_price,
             },
         )
 
