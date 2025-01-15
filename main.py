@@ -1,44 +1,46 @@
 import os
+import json
 import mlflow
 import hydra
 from omegaconf import DictConfig
-import hydra.utils
 import logging
 
-# Set up logging
+# Setup Logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# Steps in the pipeline
+_steps = [
+    "download_file",
+    "basic_cleaning",
+    "data_check",
+    "data_split",
+    "train_random_forest",
+    "test_model",
+]
+
 @hydra.main(config_name="config")
 def go(config: DictConfig):
+    logger.info("Pipeline started with the following configuration:")
+    logger.info(config)
 
-    logger.info("Starting the pipeline...")
-    logger.info(f"Config: {config}")
-
-    # Determine steps to execute
-    steps_to_execute = config.main.steps.split(",")
-
-    if "all" in steps_to_execute:
-        steps_to_execute = [
-            "download_file",
-            "basic_cleaning",
-            "data_check",
-            "data_split",
-            "train_random_forest",
-            "test_model",
-        ]
+    # Determine which steps to execute
+    steps_to_execute = config.main.steps.split(",") if config.main.steps != "all" else _steps
     logger.info(f"Steps to execute: {steps_to_execute}")
 
-    # Execute steps
+    # Get the original working directory
+    root_path = hydra.utils.get_original_cwd()
+
     if "download_file" in steps_to_execute:
         logger.info("Running 'download_file' step...")
         _ = mlflow.run(
-            uri=config.main.components_repository + "/get_data",
+            uri=f"{config.main.components_repository}/get_data",
+            entry_point="main",
             parameters={
                 "sample": config.etl.sample,
-                "artifact_name": config.etl.sample,
+                "artifact_name": "sample.csv",
                 "artifact_type": "raw_data",
-                "artifact_description": "Raw dataset",
+                "artifact_description": "Raw dataset from source",
             },
         )
         logger.info("'download_file' step completed.")
@@ -46,7 +48,8 @@ def go(config: DictConfig):
     if "basic_cleaning" in steps_to_execute:
         logger.info("Running 'basic_cleaning' step...")
         _ = mlflow.run(
-            uri=os.path.join(hydra.utils.get_original_cwd(), "src", "basic_cleaning"),
+            uri=os.path.join(root_path, "src", "basic_cleaning"),
+            entry_point="main",
             parameters={
                 "input_artifact": config.basic_cleaning.input_artifact,
                 "output_artifact": config.basic_cleaning.output_artifact,
@@ -61,11 +64,12 @@ def go(config: DictConfig):
     if "data_check" in steps_to_execute:
         logger.info("Running 'data_check' step...")
         _ = mlflow.run(
-            uri=os.path.join(hydra.utils.get_original_cwd(), "src", "data_check"),
+            uri=os.path.join(root_path, "src", "data_check"),
+            entry_point="main",
             parameters={
-                "input_artifact": config.data_check.input_artifact,
+                "csv": config.data_check.input_artifact,
                 "kl_threshold": config.data_check.kl_threshold,
-                "min_correlation": config.data_check.min_correlation,
+                "ref": config.data_check.reference_artifact,
             },
         )
         logger.info("'data_check' step completed.")
@@ -73,9 +77,10 @@ def go(config: DictConfig):
     if "data_split" in steps_to_execute:
         logger.info("Running 'data_split' step...")
         _ = mlflow.run(
-            uri=os.path.join(hydra.utils.get_original_cwd(), "src", "data_split"),
+            uri=f"{config.main.components_repository}/train_val_test_split",
+            entry_point="main",
             parameters={
-                "input_artifact": config.data_split.input_artifact,
+                "input": config.data_split.input_artifact,
                 "test_size": config.modeling.test_size,
                 "random_seed": config.modeling.random_seed,
                 "stratify_by": config.modeling.stratify_by,
@@ -85,12 +90,17 @@ def go(config: DictConfig):
 
     if "train_random_forest" in steps_to_execute:
         logger.info("Running 'train_random_forest' step...")
+        rf_config_path = os.path.join(root_path, "rf_config.json")
+        with open(rf_config_path, "w") as fp:
+            json.dump(config.modeling.random_forest, fp)
+        
         _ = mlflow.run(
-            uri=os.path.join(hydra.utils.get_original_cwd(), "src", "train_random_forest"),
+            uri=os.path.join(root_path, "src", "train_random_forest"),
+            entry_point="main",
             parameters={
-                "train_data": config.train_random_forest.train_data,
-                "model_config": config.train_random_forest.model_config,
-                "output_artifact": config.train_random_forest.output_artifact,
+                "trainval_artifact": "trainval_data.csv:latest",
+                "rf_config": rf_config_path,
+                "output_artifact": "random_forest_export",
             },
         )
         logger.info("'train_random_forest' step completed.")
@@ -98,15 +108,17 @@ def go(config: DictConfig):
     if "test_model" in steps_to_execute:
         logger.info("Running 'test_model' step...")
         _ = mlflow.run(
-            uri=os.path.join(hydra.utils.get_original_cwd(), "src", "test_model"),
+            uri=os.path.join(root_path, "src", "test_model"),
+            entry_point="main",
             parameters={
                 "mlflow_model": config.test_model.mlflow_model,
-                "test_data": config.test_model.test_data,
+                "test_dataset": config.test_model.test_data,
             },
         )
         logger.info("'test_model' step completed.")
 
     logger.info("Pipeline completed successfully!")
+
 
 if __name__ == "__main__":
     go()
