@@ -28,6 +28,8 @@ if __name__ == "__main__":
     parser.add_argument("output_artifact", type=str, help="Output cleaned CSV file")
     parser.add_argument("min_price", type=float, help="Minimum price to include")
     parser.add_argument("max_price", type=float, help="Maximum price to include")
+    parser.add_argument("--output_type", type=str, help="Type of the output artifact", required=True)
+    parser.add_argument("--output_description", type=str, help="Description of the output artifact", required=True)
 
     args = parser.parse_args()
 
@@ -37,3 +39,6 @@ if __name__ == "__main__":
         min_price=args.min_price,
         max_price=args.max_price,
     )
+
+    logger.info("Output type: %s", args.output_type)
+    logger.info("Output description: %s", args.output_description)
