@@ -70,9 +70,12 @@ def go(config: DictConfig):
                 "csv": config.data_check.input_artifact,
                 "kl_threshold": config.data_check.kl_threshold,
                 "ref": config.data_check.reference_artifact,
+                "min_price": config.data_check.min_price,
+                "max_price": config.data_check.max_price,
             },
         )
         logger.info("'data_check' step completed.")
+
 
     if "data_split" in steps_to_execute:
         logger.info("Running 'data_split' step...")
