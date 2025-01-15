@@ -119,6 +119,5 @@ def go(config: DictConfig):
 
     logger.info("Pipeline completed successfully!")
 
-
 if __name__ == "__main__":
     go()
