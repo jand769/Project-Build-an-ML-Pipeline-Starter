@@ -19,7 +19,7 @@ _steps = [
     "test_model",
 ]
 
-@hydra.main(config_name="config")
+@hydra.main(config_path="configs", config_name="config", version_base="1.2")
 def go(config: DictConfig):
     logger.info("Pipeline started with the following configuration:")
     logger.info(config)
@@ -38,7 +38,7 @@ def go(config: DictConfig):
             entry_point="main",
             parameters={
                 "sample": config.etl.sample,
-                "artifact_name": "sample.csv",
+                "artifact_name": "sample2.csv",
                 "artifact_type": "raw_data",
                 "artifact_description": "Raw dataset from source",
             },
@@ -70,12 +70,11 @@ def go(config: DictConfig):
                 "csv": config.data_check.input_artifact,
                 "kl_threshold": config.data_check.kl_threshold,
                 "ref": config.data_check.reference_artifact,
-                "min_price": config.data_check.min_price,
-                "max_price": config.data_check.max_price,
+                "min_price": config.etl.min_price,
+                "max_price": config.etl.max_price,
             },
         )
         logger.info("'data_check' step completed.")
-
 
     if "data_split" in steps_to_execute:
         logger.info("Running 'data_split' step...")
@@ -96,7 +95,7 @@ def go(config: DictConfig):
         rf_config_path = os.path.join(root_path, "rf_config.json")
         with open(rf_config_path, "w") as fp:
             json.dump(config.modeling.random_forest, fp)
-        
+
         _ = mlflow.run(
             uri=os.path.join(root_path, "src", "train_random_forest"),
             entry_point="main",
