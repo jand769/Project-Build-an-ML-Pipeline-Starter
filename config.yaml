@@ -1,5 +1,5 @@
 main:
-  components_repository: "https://github.com/udacity/Project-Build-an-ML-Pipeline-Starter.git#components"
+  components_repository: "https://github.com/jand769/Project-Build-an-ML-Pipeline-Starter.git#components"
   project_name: nyc_airbnb
   experiment_name: development
   steps: all
