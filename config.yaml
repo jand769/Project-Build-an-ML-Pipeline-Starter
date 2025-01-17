@@ -16,7 +16,7 @@ basic_cleaning:
   output_description: "Dataset cleaned of outliers and invalid geolocations"
 
 data_check:
-  input_artifact: "sample2.csv:latest"
+  input_artifact: "clean_sample2.csv:latest"
   reference_artifact: "clean_sample2.csv:latest"
   kl_threshold: 0.2
   min_price: 10

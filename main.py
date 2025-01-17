@@ -19,7 +19,8 @@ _steps = [
     "test_model",
 ]
 
-@hydra.main(config_path="configs", config_name="config", version_base="1.2")
+# Hydra main configuration
+@hydra.main(config_path=".", config_name="config", version_base="1.2")
 def go(config: DictConfig):
     logger.info("Pipeline started with the following configuration:")
     logger.info(config)
@@ -30,6 +31,7 @@ def go(config: DictConfig):
 
     # Get the original working directory
     root_path = hydra.utils.get_original_cwd()
+    logger.info(f"Original working directory: {root_path}")
 
     if "download_file" in steps_to_execute:
         logger.info("Running 'download_file' step...")
