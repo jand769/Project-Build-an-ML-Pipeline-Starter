@@ -6,3 +6,5 @@ dependencies:
   - mlflow=2.8.1
   - python=3.10
   - numpy=1.24
+  - pip:
+      - databricks_cli==0.8.7
