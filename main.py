@@ -5,13 +5,13 @@ import hydra
 from omegaconf import DictConfig
 import logging
 
-# Setup Logging
+# Setup logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Steps in the pipeline
 _steps = [
-    "download_file",
+    "download",
     "basic_cleaning",
     "data_check",
     "data_split",
@@ -19,7 +19,6 @@ _steps = [
     "test_model",
 ]
 
-# Hydra main configuration
 @hydra.main(config_path=".", config_name="config", version_base="1.2")
 def go(config: DictConfig):
     logger.info("Pipeline started with the following configuration:")
@@ -33,8 +32,8 @@ def go(config: DictConfig):
     root_path = hydra.utils.get_original_cwd()
     logger.info(f"Original working directory: {root_path}")
 
-    if "download_file" in steps_to_execute:
-        logger.info("Running 'download_file' step...")
+    if "download" in steps_to_execute:
+        logger.info("Running 'download' step...")
         _ = mlflow.run(
             uri=f"{config.main.components_repository}/get_data",
             entry_point="main",
@@ -45,7 +44,7 @@ def go(config: DictConfig):
                 "artifact_description": "Raw dataset from source",
             },
         )
-        logger.info("'download_file' step completed.")
+        logger.info("'download' step completed.")
 
     if "basic_cleaning" in steps_to_execute:
         logger.info("Running 'basic_cleaning' step...")
@@ -54,9 +53,9 @@ def go(config: DictConfig):
             entry_point="main",
             parameters={
                 "input_artifact": config.basic_cleaning.input_artifact,
-                "output_artifact": config.basic_cleaning.output_artifact,
-                "output_type": config.basic_cleaning.output_type,
-                "output_description": config.basic_cleaning.output_description,
+                "output_artifact": "clean_sample2.csv",
+                "output_type": "cleaned_sample",
+                "output_description": "Dataset cleaned of outliers and invalid geolocations",
                 "min_price": config.etl.min_price,
                 "max_price": config.etl.max_price,
             },
@@ -69,9 +68,9 @@ def go(config: DictConfig):
             uri=os.path.join(root_path, "src", "data_check"),
             entry_point="main",
             parameters={
-                "csv": config.data_check.input_artifact,
+                "csv": "clean_sample2.csv:latest", 
+                "ref": "clean_sample2.csv:reference",
                 "kl_threshold": config.data_check.kl_threshold,
-                "ref": config.data_check.reference_artifact,
                 "min_price": config.etl.min_price,
                 "max_price": config.etl.max_price,
             },
@@ -84,7 +83,7 @@ def go(config: DictConfig):
             uri=f"{config.main.components_repository}/train_val_test_split",
             entry_point="main",
             parameters={
-                "input": config.data_split.input_artifact,
+                "input": "clean_sample2.csv:latest",
                 "test_size": config.modeling.test_size,
                 "random_seed": config.modeling.random_seed,
                 "stratify_by": config.modeling.stratify_by,
