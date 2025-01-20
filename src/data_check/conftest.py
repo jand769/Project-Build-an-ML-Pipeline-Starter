@@ -1,77 +1,105 @@
 import pytest
 import pandas as pd
 import wandb
+import logging
 
+# Setup logging
+logging.basicConfig(level=logging.INFO, format="%(asctime)-15s %(message)s")
+logger = logging.getLogger(__name__)
 
 def pytest_addoption(parser):
-    parser.addoption("--csv", action="store")
-    parser.addoption("--ref", action="store")
-    parser.addoption("--kl_threshold", action="store")
-    parser.addoption("--min_price", action="store")
-    parser.addoption("--max_price", action="store")
+    """
+    Adds command-line options to pytest for parameterizing the tests.
+    """
+    parser.addoption("--csv", action="store", help="Path to the data artifact")
+    parser.addoption("--ref", action="store", help="Path to the reference artifact")
+    parser.addoption("--kl_threshold", action="store", help="Threshold for the KL divergence test")
+    parser.addoption("--min_price", action="store", help="Minimum acceptable price")
+    parser.addoption("--max_price", action="store", help="Maximum acceptable price")
 
 
 @pytest.fixture(scope="session")
 def data(request):
-    run = wandb.init(job_type="data_tests", resume=True)
-
+    """
+    Pytest fixture to fetch and load the input data artifact as a DataFrame.
+    """
     artifact_name = request.config.option.csv
-    print(f"Fetching data artifact: {artifact_name}")
+    if not artifact_name:
+        pytest.fail("You must provide the '--csv' option to specify the data artifact")
 
+    logger.info(f"Fetching data artifact: {artifact_name}")
+    run = wandb.init(job_type="data_tests", resume=True)
     try:
         data_path = run.use_artifact(artifact_name).file()
-        print(f"Fetched data artifact: {data_path}")
+        logger.info(f"Fetched data artifact: {data_path}")
     except Exception as e:
-        print(f"Error fetching data artifact: {e}")
-        raise e
+        logger.error(f"Error fetching data artifact: {e}")
+        pytest.fail(f"Failed to fetch data artifact: {e}")
 
-    df = pd.read_csv(data_path)
-    return df
+    return pd.read_csv(data_path)
 
 
 @pytest.fixture(scope="session")
 def ref_data(request):
-    run = wandb.init(job_type="data_tests", resume=True)
-
+    """
+    Pytest fixture to fetch and load the reference data artifact as a DataFrame.
+    """
     artifact_name = request.config.option.ref
-    print(f"Fetching reference artifact: {artifact_name}")
+    if not artifact_name:
+        pytest.fail("You must provide the '--ref' option to specify the reference artifact")
 
+    logger.info(f"Fetching reference artifact: {artifact_name}")
+    run = wandb.init(job_type="data_tests", resume=True)
     try:
         data_path = run.use_artifact(artifact_name).file()
-        print(f"Fetched reference artifact: {data_path}")
+        logger.info(f"Fetched reference artifact: {data_path}")
     except Exception as e:
-        print(f"Error fetching reference artifact: {e}")
-        raise e
+        logger.error(f"Error fetching reference artifact: {e}")
+        pytest.fail(f"Failed to fetch reference artifact: {e}")
 
-    df = pd.read_csv(data_path)
-    return df
+    return pd.read_csv(data_path)
 
 
 @pytest.fixture(scope="session")
 def kl_threshold(request):
+    """
+    Pytest fixture to retrieve the KL divergence threshold.
+    """
     kl_threshold = request.config.option.kl_threshold
-
     if kl_threshold is None:
-        pytest.fail("You must provide a threshold for the KL test")
+        pytest.fail("You must provide '--kl_threshold' for the KL divergence test")
 
-    return float(kl_threshold)
+    try:
+        return float(kl_threshold)
+    except ValueError:
+        pytest.fail("The provided KL threshold must be a float")
 
 
 @pytest.fixture(scope="session")
 def min_price(request):
+    """
+    Pytest fixture to retrieve the minimum price for filtering.
+    """
     min_price = request.config.option.min_price
-
     if min_price is None:
-        pytest.fail("You must provide min_price")
+        pytest.fail("You must provide '--min_price' for price filtering")
 
-    return float(min_price)
+    try:
+        return float(min_price)
+    except ValueError:
+        pytest.fail("The provided minimum price must be a float")
 
 
 @pytest.fixture(scope="session")
 def max_price(request):
+    """
+    Pytest fixture to retrieve the maximum price for filtering.
+    """
     max_price = request.config.option.max_price
-
     if max_price is None:
-        pytest.fail("You must provide max_price")
+        pytest.fail("You must provide '--max_price' for price filtering")
 
-    return float(max_price)
+    try:
+        return float(max_price)
+    except ValueError:
+        pytest.fail("The provided maximum price must be a float")

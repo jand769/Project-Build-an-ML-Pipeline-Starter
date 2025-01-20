@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-
 """
 Basic data cleaning script for the NYC Airbnb dataset.
 This script fetches the input artifact, performs cleaning, and logs the cleaned artifact.
@@ -12,50 +11,72 @@ import wandb
 
 # Setup logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)-15s %(message)s")
-logger = logging.getLogger()
+logger = logging.getLogger(__name__)
 
 
-def go(args):
+def clean_data(input_path, min_price, max_price):
     """
-    Main function to perform data cleaning and artifact logging.
+    Cleans the input dataset based on price and geographical bounds.
+
+    Args:
+        input_path (str): Path to the input CSV file.
+        min_price (float): Minimum price to filter rows.
+        max_price (float): Maximum price to filter rows.
+
+    Returns:
+        pd.DataFrame: Cleaned DataFrame.
     """
-    logger.info("Initializing W&B run...")
-    run = wandb.init(job_type="basic_cleaning")
-    run.config.update(args)
+    # Load data
+    logger.info(f"Loading dataset from {input_path}")
+    df = pd.read_csv(input_path)
 
-    # Fetch the input artifact
-    logger.info(f"Fetching input artifact: {args.input_artifact}")
-    artifact = run.use_artifact(args.input_artifact)
-    artifact_local_path = artifact.file()
-
-    # Load the data
-    logger.info(f"Reading data from {artifact_local_path}")
-    df = pd.read_csv(artifact_local_path)
-
-    # Filter data based on price
-    logger.info(f"Filtering rows with prices between {args.min_price} and {args.max_price}")
-    df = df[df["price"].between(args.min_price, args.max_price)].copy()
+    # Filter rows based on price
+    logger.info(f"Filtering rows with price between {min_price} and {max_price}")
+    df = df[df["price"].between(min_price, max_price)].copy()
 
     # Convert last_review to datetime
-    logger.info("Converting 'last_review' column to datetime")
+    logger.info("Converting 'last_review' column to datetime format")
     df["last_review"] = pd.to_datetime(df["last_review"], errors="coerce")
 
     # Remove invalid geolocations
-    logger.info("Removing rows with invalid geolocations")
+    logger.info("Filtering rows with valid longitude and latitude ranges")
     df = df[
         df["longitude"].between(-74.25, -73.50)
         & df["latitude"].between(40.5, 41.2)
     ].copy()
 
-    # Save cleaned data to a CSV file
+    return df
+
+
+def go(args):
+    """
+    Main function to execute the data cleaning process and log the artifact.
+    """
+    logger.info("Starting W&B run for basic cleaning")
+    run = wandb.init(job_type="basic_cleaning")
+    run.config.update(args)
+
+    # Fetch input artifact
+    logger.info(f"Fetching input artifact: {args.input_artifact}")
+    artifact = run.use_artifact(args.input_artifact)
+    artifact_local_path = artifact.file()
+
+    # Clean data
+    df = clean_data(
+        input_path=artifact_local_path,
+        min_price=args.min_price,
+        max_price=args.max_price,
+    )
+
+    # Save cleaned data to a new file
     output_file = "clean_sample.csv"
-    logger.info(f"Saving cleaned data to {output_file}")
+    logger.info(f"Saving cleaned dataset to {output_file}")
     df.to_csv(output_file, index=False)
 
-    # Log the cleaned dataset as a new artifact
-    logger.info("Logging the cleaned dataset as an artifact")
+    # Log cleaned dataset as a new artifact
+    logger.info(f"Logging cleaned dataset as artifact: {args.output_artifact}")
     artifact = wandb.Artifact(
-        args.output_artifact,
+        name=args.output_artifact,
         type=args.output_type,
         description=args.output_description,
     )
@@ -73,19 +94,19 @@ if __name__ == "__main__":
         "--input_artifact",
         type=str,
         required=True,
-        help="Name of the input artifact to clean (e.g., 'sample2.csv:latest')",
+        help="Name of the input artifact (e.g., 'sample2.csv:latest')",
     )
     parser.add_argument(
         "--output_artifact",
         type=str,
         required=True,
-        help="Name of the output cleaned artifact (e.g., 'clean_sample2.csv')",
+        help="Name of the output artifact (e.g., 'clean_sample2.csv')",
     )
     parser.add_argument(
         "--output_type",
         type=str,
         required=True,
-        help="Type of the output artifact (e.g., 'clean_sample')",
+        help="Type of the output artifact (e.g., 'cleaned_data')",
     )
     parser.add_argument(
         "--output_description",

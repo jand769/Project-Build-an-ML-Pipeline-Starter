@@ -1,4 +1,4 @@
-name: train_random_forest
+name: basic_cleaning
 channels:
   - conda-forge
   - defaults
