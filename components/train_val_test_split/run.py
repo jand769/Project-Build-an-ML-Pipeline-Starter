@@ -27,6 +27,7 @@ def go(args):
     artifact_local_path = run.use_artifact(args.input).file()
 
     # Load the dataset
+    logger.info("Loading dataset")
     df = pd.read_csv(artifact_local_path)
 
     # Perform train-validation and test split
@@ -35,7 +36,12 @@ def go(args):
         df,
         test_size=args.test_size,
         random_state=args.random_seed,
-        stratify=df[args.stratify_by] if args.stratify_by != 'none' else None,
+        stratify=df[args.stratify_by] if args.stratify_by != "none" else None,
+    )
+
+    # Log the shape of split datasets for debugging
+    logger.info(
+        f"Dataset split completed: trainval={trainval.shape}, test={test.shape}"
     )
 
     # Save and upload split datasets as W&B artifacts
@@ -53,14 +59,20 @@ def go(args):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Split dataset into train-validation and test sets")
+    parser = argparse.ArgumentParser(
+        description="Split dataset into train-validation and test sets"
+    )
 
     parser.add_argument("input", type=str, help="Input artifact to split")
     parser.add_argument(
         "test_size", type=float, help="Fraction of the dataset to use for the test set"
     )
     parser.add_argument(
-        "--random_seed", type=int, help="Seed for the random number generator", default=42, required=False
+        "--random_seed",
+        type=int,
+        help="Seed for the random number generator",
+        default=42,
+        required=False,
     )
     parser.add_argument(
         "--stratify_by",
