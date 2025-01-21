@@ -2,6 +2,8 @@ import pandas as pd
 import numpy as np
 import scipy.stats
 import pytest
+import os
+import wandb
 
 # Constants for testing
 EXPECTED_COLUMNS = [
@@ -24,7 +26,6 @@ EXPECTED_COLUMNS = [
 ]
 
 KNOWN_NEIGHBORHOODS = ["Bronx", "Brooklyn", "Manhattan", "Queens", "Staten Island"]
-
 
 def test_column_names(data):
     """
@@ -88,8 +89,14 @@ def data(request):
     if not artifact_name:
         pytest.fail("You must provide the '--csv' argument with the dataset artifact name.")
     run = wandb.init(job_type="data_tests", resume=True)
-    data_path = run.use_artifact(artifact_name).file()
-    return pd.read_csv(data_path)
+    artifact = run.use_artifact(artifact_name)
+    artifact_path = artifact.download()
+
+    # Ensure the path points to the actual CSV file if a directory is returned
+    if os.path.isdir(artifact_path):
+        artifact_path = os.path.join(artifact_path, os.listdir(artifact_path)[0])
+
+    return pd.read_csv(artifact_path)
 
 
 @pytest.fixture(scope="session")
@@ -101,8 +108,14 @@ def ref_data(request):
     if not artifact_name:
         pytest.fail("You must provide the '--ref' argument with the reference artifact name.")
     run = wandb.init(job_type="data_tests", resume=True)
-    ref_data_path = run.use_artifact(artifact_name).file()
-    return pd.read_csv(ref_data_path)
+    artifact = run.use_artifact(artifact_name)
+    artifact_path = artifact.download()
+
+    # Ensure the path points to the actual CSV file if a directory is returned
+    if os.path.isdir(artifact_path):
+        artifact_path = os.path.join(artifact_path, os.listdir(artifact_path)[0])
+
+    return pd.read_csv(artifact_path)
 
 
 @pytest.fixture(scope="session")
