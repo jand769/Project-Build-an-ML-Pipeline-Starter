@@ -10,7 +10,7 @@ import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Steps in the pipeline
+# Define pipeline steps
 _steps = [
     "download",
     "basic_cleaning",
@@ -20,10 +20,15 @@ _steps = [
     "test_regression_model",
 ]
 
+
 @hydra.main(config_path=".", config_name="config", version_base="1.2")
 def go(config: DictConfig):
     logger.info("Pipeline started with the following configuration:")
     logger.info(config)
+
+    # Set W&B project environment variables
+    os.environ["WANDB_PROJECT"] = config["main"]["project_name"]
+    os.environ["WANDB_RUN_GROUP"] = config["main"]["experiment_name"]
 
     # Determine which steps to execute
     steps_to_execute = config.main.steps.split(",") if config.main.steps != "all" else _steps
@@ -124,6 +129,7 @@ def go(config: DictConfig):
             logger.info("'test_regression_model' step completed.")
 
     logger.info("Pipeline execution completed successfully!")
+
 
 if __name__ == "__main__":
     go()
