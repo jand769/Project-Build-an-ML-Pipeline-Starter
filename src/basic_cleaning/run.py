@@ -1,17 +1,15 @@
 #!/usr/bin/env python
 """
-Basic data cleaning script for the NYC Airbnb dataset.
-This script fetches the input artifact, performs cleaning, and logs the cleaned artifact.
+Basic cleaning script for the Airbnb dataset.
 """
-
 import argparse
 import logging
-import pandas as pd
 import wandb
+import pandas as pd
 
-# Setup logging
+# Logging setup
 logging.basicConfig(level=logging.INFO, format="%(asctime)-15s %(message)s")
-logger = logging.getLogger(__name__)
+logger = logging.getLogger()
 
 
 def clean_data(input_path, min_price, max_price):
@@ -26,7 +24,6 @@ def clean_data(input_path, min_price, max_price):
     Returns:
         pd.DataFrame: Cleaned DataFrame.
     """
-    # Load data
     logger.info(f"Loading dataset from {input_path}")
     df = pd.read_csv(input_path)
 
@@ -69,7 +66,7 @@ def go(args):
     )
 
     # Save cleaned data to a new file
-    output_file = "clean_sample.csv"
+    output_file = "clean_sample1.csv"  # Updated to clean_sample1.csv
     logger.info(f"Saving cleaned dataset to {output_file}")
     df.to_csv(output_file, index=False)
 
@@ -88,19 +85,19 @@ def go(args):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Basic Data Cleaning for NYC Airbnb Dataset")
+    parser = argparse.ArgumentParser(description="Basic Data Cleaning for Airbnb Dataset")
 
     parser.add_argument(
         "--input_artifact",
         type=str,
         required=True,
-        help="Name of the input artifact (e.g., 'sample2.csv:latest')",
+        help="Name of the input artifact (e.g., 'sample1.csv:latest')",
     )
     parser.add_argument(
         "--output_artifact",
         type=str,
         required=True,
-        help="Name of the output artifact (e.g., 'clean_sample2.csv')",
+        help="Name of the output artifact (e.g., 'clean_sample1.csv')",
     )
     parser.add_argument(
         "--output_type",
