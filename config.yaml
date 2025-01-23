@@ -29,3 +29,5 @@ modeling:
   random_forest:
     max_depth: 10
     n_estimators: 100
+  val_size: 0.2
+  max_tfidf_features: 50
