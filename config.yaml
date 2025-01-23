@@ -5,12 +5,19 @@ main:
   steps: all
 
 etl:
-  sample: "sample1.csv"  # Updated to sample1.csv
+  sample: "sample1.csv"
   min_price: 10
   max_price: 350
 
 basic_cleaning:
-  input_artifact: "sample1.csv:latest"  # Updated to sample1.csv
-  output_artifact: "clean_sample1.csv"  # Updated to clean_sample1.csv
+  input_artifact: "sample1.csv:latest"
+  output_artifact: "clean_sample1.csv"
   output_type: "cleaned_data"
   output_description: "Data cleaned for outliers and inconsistencies"
+
+data_check:
+  input_artifact: clean_sample1.csv:latest
+  reference_artifact: clean_sample1.csv:reference
+  kl_threshold: 0.2
+  min_price: 10
+  max_price: 350

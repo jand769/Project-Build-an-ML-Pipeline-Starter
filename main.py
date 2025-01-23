@@ -3,7 +3,7 @@ import json
 import mlflow
 import tempfile
 import hydra
-from omegaconf import DictConfig
+from omegaconf import DictConfig, OmegaConf
 import logging
 
 # Setup logging
@@ -14,7 +14,9 @@ logger = logging.getLogger(__name__)
 _steps = [
     "download",
     "basic_cleaning",
+    "data_check",
 ]
+
 
 @hydra.main(config_path=".", config_name="config", version_base="1.2")
 def go(config: DictConfig):
@@ -25,15 +27,15 @@ def go(config: DictConfig):
     os.environ["WANDB_PROJECT"] = config["main"]["project_name"]
     os.environ["WANDB_RUN_GROUP"] = config["main"]["experiment_name"]
 
-    # steps to execute
+    # Determine which steps to execute
     steps_to_execute = config.main.steps.split(",") if config.main.steps != "all" else _steps
     logger.info(f"Steps to execute: {steps_to_execute}")
 
-    # root working directory
+    # Get the root working directory
     root_path = hydra.utils.get_original_cwd()
     logger.info(f"Root working directory: {root_path}")
 
-    # Temporary directory for intermediate artifacts if needed
+    # Use a temporary directory for intermediate artifacts if needed
     with tempfile.TemporaryDirectory() as tmp_dir:
         if "download" in steps_to_execute:
             logger.info("Running 'download' step...")
@@ -64,6 +66,21 @@ def go(config: DictConfig):
                 },
             )
             logger.info("'basic_cleaning' step completed.")
+
+        if "data_check" in steps_to_execute:
+            logger.info("Running 'data_check' step...")
+            mlflow.run(
+                uri=os.path.join(root_path, "src", "data_check"),
+                entry_point="main",
+                parameters={
+                    "csv": "clean_sample1.csv:latest",
+                    "ref": "clean_sample1.csv:reference",
+                    "kl_threshold": config.data_check.kl_threshold,
+                    "min_price": config.etl.min_price,
+                    "max_price": config.etl.max_price,
+                },
+            )
+            logger.info("'data_check' step completed.")
 
     logger.info("Pipeline execution completed successfully!")
 
