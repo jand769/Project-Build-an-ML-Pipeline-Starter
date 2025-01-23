@@ -1,13 +1,21 @@
 import wandb
 
-# Initialize a run
-run = wandb.init(project="nyc_airbnb")
+# Step 1: Initialize a W&B run
+run = wandb.init(
+    project="nyc_airbnb",  # Replace with your W&B project name
+    job_type="tag_alias"   # Description of this run
+)
 
-# Fetch the artifact
-artifact = run.use_artifact("clean_sample1.csv:latest")
+# Step 2: Fetch the artifact
+artifact = run.use_artifact("random_forest_export:v4")  # Replace with your artifact name and version
 
-# Add the alias 'reference'
-artifact.aliases.append("reference")
+# Step 3: Add an alias
+artifact.aliases.append("prod")  # Add "prod" alias
+
+# Step 4: Save the updated artifact with the alias
 artifact.save()
 
-print("Alias 'reference' added successfully.")
+# Step 5: Finish the run
+run.finish()
+
+print("Artifact successfully tagged with the alias 'prod'.")
