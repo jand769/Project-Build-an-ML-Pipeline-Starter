@@ -21,3 +21,11 @@ data_check:
   kl_threshold: 0.2
   min_price: 10
   max_price: 350
+
+modeling:
+  test_size: 0.2
+  random_seed: 42
+  stratify_by: neighbourhood_group
+  random_forest:
+    max_depth: 10
+    n_estimators: 100
