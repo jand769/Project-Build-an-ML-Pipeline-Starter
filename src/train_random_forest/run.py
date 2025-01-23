@@ -1,107 +1,195 @@
+#!/usr/bin/env python
+"""
+This script trains a Random Forest
+"""
 import argparse
 import logging
 import os
-import tempfile
-import pandas as pd
+import shutil
+import matplotlib.pyplot as plt
+
 import mlflow
-from sklearn.ensemble import RandomForestRegressor
+import json
+
+import pandas as pd
+import numpy as np
 from sklearn.compose import ColumnTransformer
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.impute import SimpleImputer
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import OrdinalEncoder, FunctionTransformer, OneHotEncoder
+
+import wandb
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.metrics import mean_absolute_error
 from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import OneHotEncoder, SimpleImputer, StandardScaler
-from sklearn.metrics import mean_absolute_error, r2_score
-from joblib import dump
 
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
 
-def run(args):
-    logger.info("Downloading artifact")
-    artifact_local_path = mlflow.artifacts.download_artifacts(args.trainval_artifact)
+def delta_date_feature(dates):
+    """
+    Given a 2d array containing dates (in any format recognized by pd.to_datetime), it returns the delta in days
+    between each date and the most recent date in its column
+    """
+    date_sanitized = pd.DataFrame(dates).apply(pd.to_datetime)
+    return date_sanitized.apply(lambda d: (d.max() - d).dt.days, axis=0).to_numpy()
 
-    trainval_data = pd.read_csv(os.path.join(artifact_local_path, "trainval_data.csv"))
 
-    # Splitting data into X and y
-    X = trainval_data.drop(columns=["price"])
-    y = trainval_data["price"]
+logging.basicConfig(level=logging.INFO, format="%(asctime)-15s %(message)s")
+logger = logging.getLogger()
 
-    # Splitting into train and validation sets
-    from sklearn.model_selection import train_test_split
+
+def go(args):
+
+    run = wandb.init(job_type="train_random_forest")
+    run.config.update(args)
+
+    # Get the Random Forest configuration and update W&B
+    with open(args.rf_config) as fp:
+        rf_config = json.load(fp)
+    run.config.update(rf_config)
+
+    # Fix the random seed for the Random Forest, so we get reproducible results
+    rf_config['random_state'] = args.random_seed
+
+    # Retrieve the train and validation artifact
+    trainval_local_path = run.use_artifact(args.trainval_artifact).file()
+
+    X = pd.read_csv(trainval_local_path)
+    y = X.pop("price")
+
+    logger.info(f"Minimum price: {y.min()}, Maximum price: {y.max()}")
+
     X_train, X_val, y_train, y_val = train_test_split(
-        X, y, test_size=args.val_size, random_state=args.random_seed, stratify=X[args.stratify_by] if args.stratify_by else None
+        X, y, test_size=args.val_size, stratify=X[args.stratify_by], random_state=args.random_seed
     )
 
-    logger.info("Building preprocessing pipeline")
-    # Define the preprocessing pipeline
-    numeric_features = X.select_dtypes(include=["float64", "int64"]).columns
-    categorical_features = X.select_dtypes(include=["object"]).columns
+    logger.info("Preparing sklearn pipeline")
 
-    numeric_transformer = Pipeline(steps=[
-        ("imputer", SimpleImputer(strategy="mean")),
-        ("scaler", StandardScaler())
+    sk_pipe, processed_features = get_inference_pipeline(rf_config, args.max_tfidf_features)
+
+    # Fit the pipeline
+    logger.info("Fitting pipeline")
+    sk_pipe.fit(X_train, y_train)
+
+    # Compute r2 and MAE
+    logger.info("Scoring")
+    r_squared = sk_pipe.score(X_val, y_val)
+    y_pred = sk_pipe.predict(X_val)
+    mae = mean_absolute_error(y_val, y_pred)
+
+    logger.info(f"Score: {r_squared}")
+    logger.info(f"MAE: {mae}")
+
+    # Save model
+    logger.info("Exporting model")
+    if os.path.exists("random_forest_dir"):
+        shutil.rmtree("random_forest_dir")
+
+    mlflow.sklearn.save_model(
+        sk_pipe, "random_forest_dir", input_example=X_train.iloc[:5]
+    )
+
+    # Upload the model to W&B
+    artifact = wandb.Artifact(
+        args.output_artifact,
+        type="model_export",
+        description="Trained random forest model",
+    )
+    artifact.add_dir("random_forest_dir")
+    run.log_artifact(artifact)
+
+    # Plot feature importance
+    fig_feat_imp = plot_feature_importance(sk_pipe, processed_features)
+
+    run.summary["r2"] = r_squared
+    run.summary["mae"] = mae
+
+    run.log({"feature_importance": wandb.Image(fig_feat_imp)})
+
+
+def plot_feature_importance(pipe, feat_names):
+    feat_imp = pipe["random_forest"].feature_importances_[: len(feat_names) - 1]
+    nlp_importance = sum(pipe["random_forest"].feature_importances_[len(feat_names) - 1:])
+    feat_imp = np.append(feat_imp, nlp_importance)
+    fig_feat_imp, sub_feat_imp = plt.subplots(figsize=(10, 10))
+    sub_feat_imp.bar(range(feat_imp.shape[0]), feat_imp, color="r", align="center")
+    _ = sub_feat_imp.set_xticks(range(feat_imp.shape[0]))
+    _ = sub_feat_imp.set_xticklabels(np.array(feat_names), rotation=90)
+    fig_feat_imp.tight_layout()
+    return fig_feat_imp
+
+
+def get_inference_pipeline(rf_config, max_tfidf_features):
+    ordinal_categorical = ["room_type"]
+    non_ordinal_categorical = ["neighbourhood_group"]
+
+    ordinal_categorical_preproc = OrdinalEncoder()
+
+    non_ordinal_categorical_preproc = Pipeline([
+        ("imputer", SimpleImputer(strategy="most_frequent")),
+        ("onehot", OneHotEncoder())
     ])
 
-    categorical_transformer = Pipeline(steps=[
-        ("imputer", SimpleImputer(strategy="most_frequent")),
-        ("onehot", OneHotEncoder(handle_unknown="ignore"))
+    zero_imputed = [
+        "minimum_nights",
+        "number_of_reviews",
+        "reviews_per_month",
+        "calculated_host_listings_count",
+        "availability_365",
+        "longitude",
+        "latitude"
+    ]
+    zero_imputer = SimpleImputer(strategy="constant", fill_value=0)
+
+    date_imputer = Pipeline([
+        ("imputer", SimpleImputer(strategy="constant", fill_value="2010-01-01")),
+        ("delta", FunctionTransformer(delta_date_feature, check_inverse=False, validate=False))
+    ])
+
+    reshape_to_1d = FunctionTransformer(np.reshape, kw_args={"newshape": -1})
+    name_tfidf = Pipeline([
+        ("imputer", SimpleImputer(strategy="constant", fill_value="")),
+        ("reshape", reshape_to_1d),
+        ("tfidf", TfidfVectorizer(max_features=max_tfidf_features, stop_words="english"))
     ])
 
     preprocessor = ColumnTransformer(
         transformers=[
-            ("num", numeric_transformer, numeric_features),
-            ("cat", categorical_transformer, categorical_features)
-        ]
+            ("ordinal_cat", ordinal_categorical_preproc, ordinal_categorical),
+            ("non_ordinal_cat", non_ordinal_categorical_preproc, non_ordinal_categorical),
+            ("impute_zero", zero_imputer, zero_imputed),
+            ("transform_date", date_imputer, ["last_review"]),
+            ("transform_name", name_tfidf, ["name"]),
+        ],
+        remainder="drop",
     )
 
-    logger.info("Building inference pipeline")
-    # Create the full inference pipeline
-    rf = RandomForestRegressor(**args.rf_config)
-    sk_pipe = Pipeline(steps=[
+    processed_features = (
+        ordinal_categorical + non_ordinal_categorical + zero_imputed + ["last_review", "name"]
+    )
+
+    random_forest = RandomForestRegressor(**rf_config)
+
+    sk_pipe = Pipeline([
         ("preprocessor", preprocessor),
-        ("model", rf)
+        ("random_forest", random_forest)
     ])
 
-    logger.info("Training the model")
-    sk_pipe.fit(X_train, y_train)
+    return sk_pipe, processed_features
 
-    logger.info("Evaluating the model")
-    y_pred = sk_pipe.predict(X_val)
-    mae = mean_absolute_error(y_val, y_pred)
-    r2 = r2_score(y_val, y_pred)
-
-    logger.info(f"Mean Absolute Error: {mae}")
-    logger.info(f"R2 Score: {r2}")
-
-    # Log metrics to MLflow
-    with mlflow.start_run():
-        mlflow.log_metric("mae", mae)
-        mlflow.log_metric("r2", r2)
-
-        # Save the pipeline as an artifact
-        with tempfile.TemporaryDirectory() as temp_dir:
-            export_path = os.path.join(temp_dir, "model.joblib")
-            dump(sk_pipe, export_path)
-            mlflow.log_artifact(export_path, artifact_path="model")
-
-        # Log the model configuration
-        mlflow.log_dict(args.rf_config, "rf_config.json")
-
-    logger.info("Pipeline completed successfully")
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Train Random Forest")
 
-    parser.add_argument("--trainval_artifact", type=str, required=True, help="Input artifact containing the training/validation data")
-    parser.add_argument("--val_size", type=float, required=True, help="Fraction of the dataset to use for validation")
-    parser.add_argument("--random_seed", type=int, required=True, help="Seed for random number generation")
-    parser.add_argument("--stratify_by", type=str, default=None, help="Column to use for stratification")
-    parser.add_argument("--rf_config", type=str, required=True, help="Path to JSON file containing Random Forest parameters")
-    parser.add_argument("--max_tfidf_features", type=int, required=True, help="Maximum number of features for TF-IDF vectorization")
-    parser.add_argument("--output_artifact", type=str, required=True, help="Name for the output model artifact")
+    parser = argparse.ArgumentParser(description="Train a Random Forest model")
+
+    parser.add_argument("--trainval_artifact", type=str, required=True)
+    parser.add_argument("--val_size", type=float, required=True)
+    parser.add_argument("--random_seed", type=int, default=42)
+    parser.add_argument("--stratify_by", type=str, default="none")
+    parser.add_argument("--rf_config", type=str, required=True)
+    parser.add_argument("--max_tfidf_features", type=int, default=10)
+    parser.add_argument("--output_artifact", type=str, required=True)
 
     args = parser.parse_args()
 
-    # Load the Random Forest configuration
-    with open(args.rf_config, "r") as f:
-        args.rf_config = json.load(f)
-
-    run(args)
+    go(args)
