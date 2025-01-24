@@ -13,7 +13,6 @@ import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-
 @hydra.main(config_name="config", config_path=".")
 def go(config: DictConfig):
     """
@@ -33,7 +32,7 @@ def go(config: DictConfig):
     # Log the steps to be executed
     logger.info(f"Steps to execute: {steps_to_execute}")
 
-    # Step 1: Download Data
+    # Define all steps
     if "download" in steps_to_execute:
         logger.info("Running the download step")
         try:
@@ -51,7 +50,6 @@ def go(config: DictConfig):
             logger.error(f"Error in download step: {e}")
             raise
 
-    # Step 2: Basic Cleaning
     if "basic_cleaning" in steps_to_execute:
         logger.info("Running the basic_cleaning step")
         try:
@@ -71,7 +69,6 @@ def go(config: DictConfig):
             logger.error(f"Error in basic_cleaning step: {e}")
             raise
 
-    # Step 3: Data Check
     if "data_check" in steps_to_execute:
         logger.info("Running the data_check step")
         try:
@@ -79,7 +76,7 @@ def go(config: DictConfig):
                 os.path.join(hydra.utils.get_original_cwd(), "src", "data_check"),
                 entry_point="main",
                 parameters={
-                    "csv": "clean_sample1.csv:latest",  # Corrected input artifact
+                    "csv": "clean_sample1.csv:latest",
                     "ref": "clean_sample1.csv:reference",
                     "kl_threshold": config.data_check.kl_threshold,
                     "min_price": config.etl.min_price,
@@ -90,7 +87,6 @@ def go(config: DictConfig):
             logger.error(f"Error in data_check step: {e}")
             raise
 
-    # Step 4: Data Split
     if "data_split" in steps_to_execute:
         logger.info("Running the data_split step")
         try:
@@ -98,7 +94,7 @@ def go(config: DictConfig):
                 config.main.components_repository + "/train_val_test_split",
                 "main",
                 parameters={
-                    "input": config.data_split.input_artifact,
+                    "input": config.data_split.input_artifact,  # Ensure this matches W&B artifact
                     "test_size": config.modeling.test_size,
                     "random_seed": config.modeling.random_seed,
                     "stratify_by": config.modeling.stratify_by,
@@ -108,7 +104,6 @@ def go(config: DictConfig):
             logger.error(f"Error in data_split step: {e}")
             raise
 
-    # Step 5: Train Random Forest
     if "train_random_forest" in steps_to_execute:
         logger.info("Running the train_random_forest step")
         try:
@@ -129,7 +124,6 @@ def go(config: DictConfig):
             logger.error(f"Error in train_random_forest step: {e}")
             raise
 
-    # Step 6: Test Regression Model
     if "test_regression_model" in steps_to_execute:
         logger.info("Running the test_regression_model step")
         try:

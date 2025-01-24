@@ -2,7 +2,6 @@
 """
 This script splits the provided dataframe into train-validation and test sets.
 """
-
 import argparse
 import logging
 import pandas as pd
@@ -19,11 +18,10 @@ def go(args):
     """
     Main function to split the dataset into train-validation and test sets.
     """
-    # Initialize W&B run with correct project
+    # Initialize W&B run
     run = wandb.init(
-        job_type="train_val_test_split",
-        project="nyc_airbnb",  # Ensure this matches your W&B project
-        entity="jand769-western-governors-university"
+        project="nyc_airbnb",  # Explicitly set the W&B project
+        job_type="train_val_test_split"
     )
     run.config.update(args)
 
