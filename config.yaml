@@ -11,23 +11,25 @@ etl:
 
 basic_cleaning:
   input_artifact: "sample1.csv:latest"
+  max_price: 350
+  min_price: 10
   output_artifact: "clean_sample1.csv"
-  output_type: "cleaned_data"
   output_description: "Data cleaned for outliers and inconsistencies"
+  output_type: "cleaned_data"
+
 
 data_check:
-  input_artifact: clean_sample1.csv:latest
-  reference_artifact: clean_sample1.csv:reference
-  kl_threshold: 0.2
-  min_price: 10
-  max_price: 350
+  kl_threshold: 0.1
+
+data_split:
+  input_artifact: "clean_sample1.csv:latest"
 
 modeling:
-  test_size: 0.2
-  random_seed: 42
-  stratify_by: neighbourhood_group
-  random_forest:
-    max_depth: 10
-    n_estimators: 100
+  trainval_artifact: "trainval_data.csv:latest"
+  test_size: 0.3
   val_size: 0.2
-  max_tfidf_features: 50
+  random_seed: 42
+  stratify_by: "neighborhood_group"
+  rf_config: "random_forest_config.json"
+  max_tfidf_features: 10
+  output_artifact: "random_forest_model"

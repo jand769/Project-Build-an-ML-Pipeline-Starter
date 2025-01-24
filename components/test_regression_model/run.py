@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-This step tests the provided regression model against the test dataset.
+This step takes the best model, tagged with the "prod" tag, and tests it against the test dataset.
 """
 import argparse
 import logging
@@ -18,18 +18,19 @@ def go(args):
     """
     Test the regression model and log metrics.
     """
+    # Initialize WandB
     run = wandb.init(job_type="test_model")
     run.config.update(vars(args))
 
     logger.info("Downloading artifacts")
 
-    # Download model artifact
+    # Download the MLflow model artifact
     model_local_path = run.use_artifact(args.mlflow_model).download()
 
-    # Download test dataset artifact
+    # Download the test dataset artifact
     test_dataset_path = run.use_artifact(args.test_dataset).file()
 
-    # Read the test dataset
+    # Load the test dataset
     logger.info("Loading test dataset")
     test_df = pd.read_csv(test_dataset_path)
     y_test = test_df.pop("price")
@@ -41,10 +42,11 @@ def go(args):
     y_pred = model.predict(X_test)
 
     # Calculate metrics
+    logger.info("Calculating metrics")
     mae = mean_absolute_error(y_test, y_pred)
     r2 = r2_score(y_test, y_pred)
 
-    # Log metrics
+    # Log metrics to WandB
     logger.info(f"MAE: {mae}")
     logger.info(f"R2: {r2}")
     run.summary["mae"] = mae
@@ -54,20 +56,21 @@ def go(args):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Test a regression model against the test dataset")
+    # Argument parsing
+    parser = argparse.ArgumentParser(description="Test the provided model against the test dataset")
 
     parser.add_argument(
         "--mlflow_model",
         type=str,
+        help="Input MLflow model (e.g., 'model:prod')",
         required=True,
-        help="The input MLflow model (e.g., 'model:prod')",
     )
 
     parser.add_argument(
         "--test_dataset",
         type=str,
+        help="Test dataset artifact",
         required=True,
-        help="The input test dataset artifact",
     )
 
     args = parser.parse_args()

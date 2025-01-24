@@ -6,11 +6,13 @@ Pipeline execution script
 import mlflow
 import hydra
 from omegaconf import DictConfig
+import os
 import logging
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
 
 @hydra.main(config_name="config", config_path=".")
 def go(config: DictConfig):
@@ -28,83 +30,120 @@ def go(config: DictConfig):
         "test_regression_model",
     ]
 
-    # Define all steps
+    # Log the steps to be executed
+    logger.info(f"Steps to execute: {steps_to_execute}")
+
+    # Step 1: Download Data
     if "download" in steps_to_execute:
-        _ = mlflow.run(
-            config.main.components_repository + "/get_data",
-            "main",
-            parameters={
-                "sample": config.etl.sample,
-                "artifact_name": "sample.csv",
-                "artifact_type": "raw_data",
-                "artifact_description": "Raw dataset",
-            },
-        )
+        logger.info("Running the download step")
+        try:
+            _ = mlflow.run(
+                config.main.components_repository + "/get_data",
+                "main",
+                parameters={
+                    "sample": config.etl.sample,
+                    "artifact_name": "sample.csv",
+                    "artifact_type": "raw_data",
+                    "artifact_description": "Raw dataset",
+                },
+            )
+        except Exception as e:
+            logger.error(f"Error in download step: {e}")
+            raise
 
+    # Step 2: Basic Cleaning
     if "basic_cleaning" in steps_to_execute:
-        _ = mlflow.run(
-            config.main.components_repository + "/basic_cleaning",
-            "main",
-            parameters={
-                "input_artifact": config.basic_cleaning.input_artifact,
-                "output_artifact": config.basic_cleaning.output_artifact,
-                "output_type": config.basic_cleaning.output_type,
-                "output_description": config.basic_cleaning.output_description,
-                "min_price": config.basic_cleaning.min_price,
-                "max_price": config.basic_cleaning.max_price,
-            },
-        )
+        logger.info("Running the basic_cleaning step")
+        try:
+            _ = mlflow.run(
+                config.main.components_repository + "/basic_cleaning",
+                "main",
+                parameters={
+                    "input_artifact": config.basic_cleaning.input_artifact,
+                    "output_artifact": config.basic_cleaning.output_artifact,
+                    "output_type": config.basic_cleaning.output_type,
+                    "output_description": config.basic_cleaning.output_description,
+                    "min_price": config.basic_cleaning.min_price,
+                    "max_price": config.basic_cleaning.max_price,
+                },
+            )
+        except Exception as e:
+            logger.error(f"Error in basic_cleaning step: {e}")
+            raise
 
+    # Step 3: Data Check
     if "data_check" in steps_to_execute:
-        _ = mlflow.run(
-            config.main.components_repository + "/data_check",
-            "main",
-            parameters={
-                "input_artifact": config.data_check.input_artifact,
-                "reference_artifact": config.data_check.reference_artifact,
-                "kl_threshold": config.data_check.kl_threshold,
-                "min_price": config.data_check.min_price,
-                "max_price": config.data_check.max_price,
-            },
-        )
+        logger.info("Running the data_check step")
+        try:
+            _ = mlflow.run(
+                os.path.join(hydra.utils.get_original_cwd(), "src", "data_check"),
+                entry_point="main",
+                parameters={
+                    "csv": "clean_sample1.csv:latest",  # Corrected input artifact
+                    "ref": "clean_sample1.csv:reference",
+                    "kl_threshold": config.data_check.kl_threshold,
+                    "min_price": config.etl.min_price,
+                    "max_price": config.etl.max_price,
+                },
+            )
+        except Exception as e:
+            logger.error(f"Error in data_check step: {e}")
+            raise
 
+    # Step 4: Data Split
     if "data_split" in steps_to_execute:
-        _ = mlflow.run(
-            config.main.components_repository + "/data_split",
-            "main",
-            parameters={
-                "input_artifact": config.data_split.input_artifact,
-                "test_size": config.modeling.test_size,
-                "random_seed": config.modeling.random_seed,
-                "stratify_by": config.modeling.stratify_by,
-            },
-        )
+        logger.info("Running the data_split step")
+        try:
+            _ = mlflow.run(
+                config.main.components_repository + "/train_val_test_split",
+                "main",
+                parameters={
+                    "input": config.data_split.input_artifact,
+                    "test_size": config.modeling.test_size,
+                    "random_seed": config.modeling.random_seed,
+                    "stratify_by": config.modeling.stratify_by,
+                },
+            )
+        except Exception as e:
+            logger.error(f"Error in data_split step: {e}")
+            raise
 
+    # Step 5: Train Random Forest
     if "train_random_forest" in steps_to_execute:
-        _ = mlflow.run(
-            config.main.components_repository + "/train_random_forest",
-            "main",
-            parameters={
-                "trainval_artifact": config.modeling.trainval_artifact,
-                "val_size": config.modeling.val_size,
-                "random_seed": config.modeling.random_seed,
-                "stratify_by": config.modeling.stratify_by,
-                "rf_config": config.modeling.rf_config,
-                "max_tfidf_features": config.modeling.max_tfidf_features,
-                "output_artifact": config.modeling.output_artifact,
-            },
-        )
+        logger.info("Running the train_random_forest step")
+        try:
+            _ = mlflow.run(
+                config.main.components_repository + "/train_random_forest",
+                "main",
+                parameters={
+                    "trainval_artifact": config.modeling.trainval_artifact,
+                    "val_size": config.modeling.val_size,
+                    "random_seed": config.modeling.random_seed,
+                    "stratify_by": config.modeling.stratify_by,
+                    "rf_config": config.modeling.rf_config,
+                    "max_tfidf_features": config.modeling.max_tfidf_features,
+                    "output_artifact": config.modeling.output_artifact,
+                },
+            )
+        except Exception as e:
+            logger.error(f"Error in train_random_forest step: {e}")
+            raise
 
+    # Step 6: Test Regression Model
     if "test_regression_model" in steps_to_execute:
-        logger.info("Running test_regression_model step")
-        _ = mlflow.run(
-            config.main.components_repository + "/test_regression_model",
-            "main",
-            parameters={
-                "mlflow_model": "random_forest_export:prod",  # Production model alias
-                "test_dataset": "test_data.csv:latest",  # Correct key for test dataset
-            },
-        )
+        logger.info("Running the test_regression_model step")
+        try:
+            _ = mlflow.run(
+                config.main.components_repository + "/test_regression_model",
+                "main",
+                parameters={
+                    "mlflow_model": "random_forest_export:prod",
+                    "test_dataset": "test_data.csv:latest",
+                },
+            )
+        except Exception as e:
+            logger.error(f"Error in test_regression_model step: {e}")
+            raise
 
 
 if __name__ == "__main__":
