@@ -17,10 +17,10 @@ modeling:
   val_size: 0.2
   random_seed: 42
   stratify_by: "neighbourhood_group"
-  max_tfidf_features: 5
+  max_tfidf_features: 50
   random_forest:
-    n_estimators: 100
-    max_depth: 15
+    n_estimators: 200
+    max_depth: 50
     min_samples_split: 4
     min_samples_leaf: 3
     n_jobs: -1
@@ -28,4 +28,3 @@ modeling:
     max_features: 0.5
     oob_score: true
   output_artifact: "random_forest_export"
-
