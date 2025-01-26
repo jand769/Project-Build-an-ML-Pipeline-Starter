@@ -28,6 +28,7 @@ def go(config: DictConfig):
     # Set W&B project environment variables
     os.environ["WANDB_PROJECT"] = config["main"]["project_name"]
     os.environ["WANDB_RUN_GROUP"] = config["main"]["experiment_name"]
+    logger.info(f"WANDB_PROJECT set to: {os.environ.get('WANDB_PROJECT')}")
 
     # Determine the steps to execute
     steps_to_execute = (
