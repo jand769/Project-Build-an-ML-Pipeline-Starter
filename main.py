@@ -17,6 +17,7 @@ _steps = [
     "data_check",
     "data_split",
     "train_random_forest",
+    "test_regression_model",  # Added the new step to the pipeline
 ]
 
 @hydra.main(config_name="config", config_path=".", version_base="1.2")
@@ -108,6 +109,18 @@ def go(config: DictConfig):
                     "output_artifact": config["modeling"]["output_artifact"],
                 },
             )
+
+        if "test_regression_model" in steps_to_execute:
+            logger.info("Running 'test_regression_model' step")
+            mlflow.run(
+                uri=os.path.join(hydra.utils.get_original_cwd(), "components", "test_regression_model"),
+                entry_point="main",
+                parameters={
+                    "mlflow_model": "random_forest_export:prod",
+                    "test_dataset": "test_data.csv:latest",
+                },
+            )
+            logger.info("Completed 'test_regression_model' step")
 
 if __name__ == "__main__":
     go()

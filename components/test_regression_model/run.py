@@ -24,11 +24,11 @@ def go(args):
 
     logger.info("Downloading artifacts")
 
-    # Download the MLflow model artifact
-    model_local_path = run.use_artifact(args.mlflow_model).download()
+    # Fetch the MLflow model artifact with the "prod" tag
+    model_local_path = run.use_artifact("random_forest_export:prod").download()
 
-    # Download the test dataset artifact
-    test_dataset_path = run.use_artifact(args.test_dataset).file()
+    # Fetch the test dataset artifact
+    test_dataset_path = run.use_artifact("test_data.csv:latest").file()
 
     # Load the test dataset
     logger.info("Loading test dataset")
@@ -62,15 +62,17 @@ if __name__ == "__main__":
     parser.add_argument(
         "--mlflow_model",
         type=str,
-        help="Input MLflow model (e.g., 'model:prod')",
-        required=True,
+        help="Input MLflow model (e.g., 'random_forest_export:prod')",
+        default="random_forest_export:prod",  # Defaulting to prod alias
+        required=False,
     )
 
     parser.add_argument(
         "--test_dataset",
         type=str,
-        help="Test dataset artifact",
-        required=True,
+        help="Test dataset artifact (e.g., 'test_data.csv:latest')",
+        default="test_data.csv:latest",  # Defaulting to latest test dataset
+        required=False,
     )
 
     args = parser.parse_args()
